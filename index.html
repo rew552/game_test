@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ビデオポーカー - Jacks or Better</title>
+  <style>
+    /* CSS Reset & Base */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-felt-center: #1a5e35;
+      --bg-felt-mid: #114525;
+      --bg-felt-edge: #092915;
+      --table-border: #2c1e13;
+      --gold-primary: #f59e0b;
+      --gold-hover: #fbbf24;
+      --gold-light: #fef3c7;
+      --gold-glow: rgba(245, 158, 11, 0.45);
+      --card-white: #ffffff;
+      --card-back: #1e3a8a;
+      --card-red: #dc2626;
+      --card-black: #0f172a;
+      --text-white: #f8fafc;
+      --text-muted: #cbd5e1;
+      --accent-green: #22c55e;
+      --accent-green-hover: #16a34a;
+      --accent-blue: #3b82f6;
+      --accent-blue-hover: #2563eb;
+      --accent-danger: #ef4444;
+      --accent-danger-hover: #dc2626;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: #06180d;
+      background-image: radial-gradient(circle at 50% 25%, var(--bg-felt-center), var(--bg-felt-mid) 65%, var(--bg-felt-edge) 100%);
+      color: var(--text-white);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 12px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Screen Reader Only */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Container */
+    .table-container {
+      width: 100%;
+      max-width: 1140px;
+      background: rgba(8, 35, 18, 0.7);
+      border: 5px solid #23160c;
+      border-radius: 18px;
+      box-shadow: 0 0 0 2px #4a3622, 0 12px 36px rgba(0, 0, 0, 0.75), inset 0 0 40px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin: auto 0;
+    }
+
+    /* Header Bar */
+    header {
+      background: rgba(12, 26, 17, 0.9);
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #2f4534;
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--gold-hover);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-badge {
+      background: #78350f;
+      color: #fef08a;
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      border: 1px solid #b45309;
+      font-weight: 700;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      background: #27372b;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+      color: #ffffff;
+      border-color: #64748b;
+    }
+
+    .btn-secondary:focus-visible {
+      outline: 2px solid var(--gold-hover);
+      outline-offset: 2px;
+    }
+
+    /* Game Layout (Desktop: Play Column on Left, Paytable on Right) */
+    .game-layout {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      width: 100%;
+    }
+
+    .play-column {
+      flex: 1 1 62%;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      border-right: 2px solid #233b2a;
+    }
+
+    /* Paytable Section (Secondary reference) */
+    .paytable-wrapper {
+      flex: 0 0 380px;
+      width: 380px;
+      padding: 8px 12px;
+      background: rgba(3, 18, 9, 0.65);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow-x: auto;
+    }
+
+    .paytable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.74rem;
+      table-layout: fixed;
+    }
+
+    .paytable th, .paytable td {
+      padding: 3.5px 5px;
+      text-align: right;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .paytable th:first-child, .paytable td:first-child {
+      text-align: left;
+      font-weight: 600;
+      width: 38%;
+      overflow-wrap: anywhere;
+    }
+
+    .paytable th {
+      color: #94a3b8;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+    }
+
+    .paytable col.bet-col {
+      width: 12.4%;
+    }
+
+    .paytable .col-active {
+      background: rgba(245, 158, 11, 0.22);
+      color: #fef08a;
+      font-weight: 800;
+    }
+
+    th.col-active {
+      color: #fef08a !important;
+      border-bottom: 2px solid var(--gold-primary);
+    }
+
+    .paytable tr.winning-row {
+      animation: winGlow 1s ease-in-out infinite alternate;
+      background: rgba(234, 179, 8, 0.35) !important;
+    }
+
+    .paytable tr.winning-row td {
+      color: #ffffff !important;
+      font-weight: 800;
+      text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+    }
+
+    @keyframes winGlow {
+      from { background: rgba(234, 179, 8, 0.25); }
+      to { background: rgba(234, 179, 8, 0.5); }
+    }
+
+    /* Message & Status Banner */
+    .status-banner {
+      padding: 8px 14px;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.35);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .status-text {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: 0.02em;
+      transition: color 0.2s ease;
+    }
+
+    .status-text.win {
+      color: #fef08a;
+      font-size: 1.15rem;
+      text-shadow: 0 0 10px rgba(234, 179, 8, 0.6);
+      animation: winPulse 0.6s ease-in-out;
+    }
+
+    .status-text.gameover {
+      color: #fca5a5;
+    }
+
+    @keyframes winPulse {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Cards Playing Field */
+    .cards-area {
+      padding: 14px 12px 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      perspective: 1000px;
+    }
+
+    .card-slot {
+      flex: 1;
+      max-width: 106px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Held Indicator Badge */
+    .held-badge {
+      height: 20px;
+      margin-bottom: 4px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 1px 8px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #f59e0b, #d97706);
+      color: #451a03;
+      border: 1px solid #fef08a;
+      box-shadow: 0 2px 6px rgba(245, 158, 11, 0.5);
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+    }
+
+    .held-badge.visible {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Playing Card Button */
+    .card-btn {
+      width: 100%;
+      aspect-ratio: 2.5 / 3.5;
+      background: var(--card-white);
+      border-radius: 10px;
+      border: 2px solid #cbd5e1;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 8px 6px;
+      position: relative;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      font-family: inherit;
+    }
+
+    .card-btn:focus-visible {
+      outline: 3px solid #60a5fa;
+      outline-offset: 3px;
+    }
+
+    .card-btn.held {
+      transform: translateY(-8px);
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px #fbbf24, 0 10px 22px rgba(245, 158, 11, 0.4);
+    }
+
+    .card-btn:disabled {
+      cursor: default;
+    }
+
+    .card-btn.card-back {
+      background: #1e3a8a;
+      background-image: repeating-linear-gradient(45deg, #1e40af 0, #1e40af 10px, #1d4ed8 10px, #1d4ed8 20px);
+      border: 2px solid #93c5fd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-back-pattern {
+      width: 70%;
+      height: 75%;
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      border-radius: 6px;
+    }
+
+    .card-corner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+      width: 22px;
+    }
+
+    .card-corner.bottom {
+      transform: rotate(180deg);
+      align-self: flex-end;
+    }
+
+    .card-rank {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+    }
+
+    .card-suit-mini {
+      width: 14px;
+      height: 14px;
+      margin-top: 2px;
+    }
+
+    .card-suit-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .suit-red {
+      color: var(--card-red);
+      fill: var(--card-red);
+    }
+
+    .suit-black {
+      color: var(--card-black);
+      fill: var(--card-black);
+    }
+
+    .card-num-hint {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    /* Dashboard & Controls */
+    .dashboard-panel {
+      background: rgba(10, 25, 15, 0.85);
+      border-top: 2px solid #2f4534;
+      padding: 10px 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .meters-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .meter-box {
+      background: #0f172a;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      padding: 6px 12px;
+      text-align: center;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .meter-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+
+    .meter-val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #38bdf8;
+    }
+
+    .meter-val.credits {
+      color: #4ade80;
+    }
+
+    .meter-val.win {
+      color: #fbbf24;
+    }
+
+    /* Action Controls Row */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .bet-selectors {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bet-label-tag {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-right: 2px;
+    }
+
+    .btn-bet-num {
+      width: 38px;
+      height: 38px;
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 2px solid #475569;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-bet-num:hover:not(:disabled) {
+      background: #334155;
+      border-color: #94a3b8;
+      color: #ffffff;
+    }
+
+    .btn-bet-num.active {
+      background: var(--gold-primary);
+      border-color: var(--gold-hover);
+      color: #451a03;
+      box-shadow: 0 0 10px var(--gold-glow);
+    }
+
+    .btn-bet-num:focus-visible {
+      outline: 2px solid var(--gold-hover);
+      outline-offset: 2px;
+    }
+
+    .btn-bet-num:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-action-group {
+      display: flex;
+      gap: 10px;
+      flex-grow: 1;
+      justify-content: flex-end;
+    }
+
+    .btn-action {
+      min-width: 120px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-action:focus-visible {
+      outline: 3px solid #ffffff;
+      outline-offset: 2px;
+    }
+
+    .btn-action:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+
+    .btn-max-bet {
+      background: #854d0e;
+      color: #fef08a;
+      border: 2px solid #ca8a04;
+    }
+
+    .btn-max-bet:hover:not(:disabled) {
+      background: #a16207;
+      border-color: #eab308;
+      box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
+    }
+
+    .btn-primary-action {
+      background: linear-gradient(180deg, #16a34a, #15803d);
+      color: #ffffff;
+      border: 2px solid #4ade80;
+      box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+      min-width: 150px;
+    }
+
+    .btn-primary-action:hover:not(:disabled) {
+      background: linear-gradient(180deg, #22c55e, #16a34a);
+      border-color: #86efac;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary-action.draw-mode {
+      background: linear-gradient(180deg, #2563eb, #1d4ed8);
+      border-color: #60a5fa;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-primary-action.draw-mode:hover:not(:disabled) {
+      background: linear-gradient(180deg, #3b82f6, #2563eb);
+      border-color: #93c5fd;
+    }
+
+    .btn-restart-action {
+      background: linear-gradient(180deg, #dc2626, #b91c1c);
+      color: #ffffff;
+      border: 2px solid #f87171;
+    }
+
+    .btn-restart-action:hover:not(:disabled) {
+      background: linear-gradient(180deg, #ef4444, #dc2626);
+    }
+
+    /* Shortcuts hint */
+    .keyboard-guide {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      text-align: center;
+      line-height: 1.4;
+      border-top: 1px dashed rgba(255, 255, 255, 0.1);
+      padding-top: 8px;
+    }
+
+    .kbd-key {
+      display: inline-block;
+      background: #334155;
+      color: #f1f5f9;
+      border: 1px solid #475569;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 0.7rem;
+      font-family: monospace;
+      margin: 0 2px;
+    }
+
+    /* Modal / Alert for out-of-credits or resets */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-card {
+      background: #0f172a;
+      border: 2px solid #38bdf8;
+      border-radius: 14px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+      transform: scale(0.9);
+      transition: transform 0.2s ease;
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      color: #f8fafc;
+    }
+
+    .modal-desc {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-secondary-action {
+      background: #334155;
+      color: #e2e8f0;
+      border: 2px solid #64748b;
+    }
+
+    .btn-secondary-action:hover:not(:disabled) {
+      background: #475569;
+      color: #ffffff;
+      border-color: #94a3b8;
+    }
+
+    .btn-secondary-action:focus-visible {
+      outline: 2px solid var(--gold-hover);
+      outline-offset: 2px;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 860px) {
+      .game-layout {
+        flex-direction: column;
+      }
+
+      .play-column {
+        border-right: none;
+        border-bottom: 2px solid #233b2a;
+      }
+
+      .paytable-wrapper {
+        width: 100%;
+        flex: none;
+        padding: 6px 8px;
+      }
+    }
+
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 640px) {
+      body {
+        padding: 4px;
+      }
+
+      .table-container {
+        border-width: 3px;
+        border-radius: 12px;
+      }
+
+      header {
+        padding: 6px 10px;
+      }
+
+      .brand-title {
+        font-size: 0.95rem;
+      }
+
+      .paytable-wrapper {
+        padding: 4px 6px;
+      }
+
+      .paytable {
+        font-size: 0.68rem;
+      }
+
+      .paytable th, .paytable td {
+        padding: 2.5px 3px;
+      }
+
+      .cards-area {
+        padding: 8px 4px;
+        gap: 5px;
+      }
+
+      .card-slot {
+        max-width: none;
+      }
+
+      .card-btn {
+        padding: 4px 3px;
+        border-radius: 6px;
+      }
+
+      .card-rank {
+        font-size: 0.95rem;
+      }
+
+      .card-suit-mini {
+        width: 11px;
+        height: 11px;
+      }
+
+      .card-suit-center {
+        width: 28px;
+        height: 28px;
+      }
+
+      .held-badge {
+        font-size: 0.62rem;
+        padding: 1px 4px;
+        height: 16px;
+        margin-bottom: 3px;
+      }
+
+      .card-num-hint {
+        font-size: 0.62rem;
+        margin-top: 2px;
+      }
+
+      .dashboard-panel {
+        padding: 8px 8px;
+        gap: 8px;
+      }
+
+      .meter-val {
+        font-size: 1.1rem;
+      }
+
+      .meter-box {
+        padding: 3px 6px;
+      }
+
+      .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+      }
+
+      .bet-selectors {
+        justify-content: center;
+      }
+
+      .btn-bet-num {
+        width: 42px;
+        height: 36px;
+      }
+
+      .btn-action-group {
+        justify-content: stretch;
+      }
+
+      .btn-action {
+        flex: 1;
+        padding: 10px 8px;
+        font-size: 0.9rem;
+        min-width: 0;
+      }
+
+      .keyboard-guide {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen reader live announcement region -->
+  <div id="status-live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+  <main class="table-container" role="region" aria-label="ビデオポーカーテーブル">
+    
+    <!-- Header -->
+    <header>
+      <div class="brand-title">
+        <span>ビデオポーカー</span>
+        <span class="brand-badge">Jacks or Better</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-sound-toggle" class="btn-secondary" type="button" aria-label="効果音の切り替え">
+          🔊 音声: オン
+        </button>
+        <button id="btn-reset-game" class="btn-secondary" type="button" aria-label="最初からやり直す（ゲームリセット）">
+          リセット
+        </button>
+      </div>
+    </header>
+
+    <div class="game-layout">
+      <!-- Main Play Column -->
+      <div class="play-column">
+        <!-- Status Message Banner -->
+        <section class="status-banner" aria-label="ゲーム状況">
+          <div class="status-text" id="status-display">
+            ベット額を選んで「配る」を押してください
+          </div>
+        </section>
+
+        <!-- Cards Play Area -->
+        <section class="cards-area" aria-label="手札エリア">
+          <!-- 5 Card Slots -->
+          <div class="card-slot">
+            <div class="held-badge" id="badge-0" aria-hidden="true">キープ</div>
+            <button type="button" class="card-btn card-back" id="card-btn-0" data-index="0" aria-label="1枚目のカード" aria-pressed="false" disabled>
+              <div class="card-back-pattern"></div>
+            </button>
+            <span class="card-num-hint">[1]</span>
+          </div>
+
+          <div class="card-slot">
+            <div class="held-badge" id="badge-1" aria-hidden="true">キープ</div>
+            <button type="button" class="card-btn card-back" id="card-btn-1" data-index="1" aria-label="2枚目のカード" aria-pressed="false" disabled>
+              <div class="card-back-pattern"></div>
+            </button>
+            <span class="card-num-hint">[2]</span>
+          </div>
+
+          <div class="card-slot">
+            <div class="held-badge" id="badge-2" aria-hidden="true">キープ</div>
+            <button type="button" class="card-btn card-back" id="card-btn-2" data-index="2" aria-label="3枚目のカード" aria-pressed="false" disabled>
+              <div class="card-back-pattern"></div>
+            </button>
+            <span class="card-num-hint">[3]</span>
+          </div>
+
+          <div class="card-slot">
+            <div class="held-badge" id="badge-3" aria-hidden="true">キープ</div>
+            <button type="button" class="card-btn card-back" id="card-btn-3" data-index="3" aria-label="4枚目のカード" aria-pressed="false" disabled>
+              <div class="card-back-pattern"></div>
+            </button>
+            <span class="card-num-hint">[4]</span>
+          </div>
+
+          <div class="card-slot">
+            <div class="held-badge" id="badge-4" aria-hidden="true">キープ</div>
+            <button type="button" class="card-btn card-back" id="card-btn-4" data-index="4" aria-label="5枚目のカード" aria-pressed="false" disabled>
+              <div class="card-back-pattern"></div>
+            </button>
+            <span class="card-num-hint">[5]</span>
+          </div>
+        </section>
+
+        <!-- Dashboard & Controls -->
+        <section class="dashboard-panel" aria-label="操作パネル">
+          <!-- Credit, Bet, Win Meters -->
+          <div class="meters-row">
+            <div class="meter-box">
+              <div class="meter-label">クレジット</div>
+              <div class="meter-val credits" id="meter-credits">100</div>
+            </div>
+            <div class="meter-box">
+              <div class="meter-label">ベット額</div>
+              <div class="meter-val" id="meter-wager">1</div>
+            </div>
+            <div class="meter-box">
+              <div class="meter-label">獲得額</div>
+              <div class="meter-val win" id="meter-win">0</div>
+            </div>
+          </div>
+
+          <!-- Action Buttons Row -->
+          <div class="controls-row">
+            <!-- Bet Selectors -->
+            <div class="bet-selectors" role="group" aria-label="ベット額選択">
+              <span class="bet-label-tag">ベット:</span>
+              <button type="button" class="btn-bet-num active" data-bet="1" aria-label="ベット1">1</button>
+              <button type="button" class="btn-bet-num" data-bet="2" aria-label="ベット2">2</button>
+              <button type="button" class="btn-bet-num" data-bet="3" aria-label="ベット3">3</button>
+              <button type="button" class="btn-bet-num" data-bet="4" aria-label="ベット4">4</button>
+              <button type="button" class="btn-bet-num" data-bet="5" aria-label="ベット5">5</button>
+            </div>
+
+            <!-- Primary Action Group -->
+            <div class="btn-action-group">
+              <button type="button" class="btn-action btn-max-bet" id="btn-bet-max" aria-label="MAXベット (5枚賭ける)">
+                MAX (5)
+              </button>
+              <button type="button" class="btn-action btn-primary-action" id="btn-primary" aria-label="配る">
+                配る (Deal)
+              </button>
+            </div>
+          </div>
+
+          <!-- Keyboard Guide -->
+          <div class="keyboard-guide" aria-hidden="true">
+            キーボード操作: <span class="kbd-key">1〜5</span> キープ切替 | <span class="kbd-key">Space</span>/<span class="kbd-key">Enter</span> 配る/引く | <span class="kbd-key">B</span> ベット変更 | <span class="kbd-key">M</span> MAXベット | <span class="kbd-key">R</span> リセット
+          </div>
+        </section>
+      </div>
+
+      <!-- Pay Table Column (Secondary reference) -->
+      <section class="paytable-wrapper" aria-label="配当表">
+        <table class="paytable" id="paytable">
+          <colgroup>
+            <col>
+            <col class="bet-col" id="col-bet-1">
+            <col class="bet-col" id="col-bet-2">
+            <col class="bet-col" id="col-bet-3">
+            <col class="bet-col" id="col-bet-4">
+            <col class="bet-col" id="col-bet-5">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">役名 (HAND)</th>
+              <th scope="col" id="th-bet-1">1枚</th>
+              <th scope="col" id="th-bet-2">2枚</th>
+              <th scope="col" id="th-bet-3">3枚</th>
+              <th scope="col" id="th-bet-4">4枚</th>
+              <th scope="col" id="th-bet-5">5枚</th>
+            </tr>
+          </thead>
+          <tbody id="paytable-body">
+            <!-- Rows inserted by JS -->
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+  </main>
+
+  <!-- Modal Dialog (Out of Credits / Confirmation) -->
+  <div class="modal-overlay" id="game-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
+    <div class="modal-card">
+      <h2 class="modal-title" id="modal-title">ゲームオーバー</h2>
+      <p class="modal-desc" id="modal-desc">クレジットがなくなりました。100クレジットで最初からやり直しますか？</p>
+      <div class="modal-buttons" id="modal-buttons">
+        <button type="button" class="btn-action btn-secondary-action" id="modal-btn-cancel">キャンセル</button>
+        <button type="button" class="btn-action btn-primary-action" id="modal-btn-confirm">ニューゲーム (100)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================
+     * Video Poker (Jacks or Better) - Pure Vanilla Engine & UI
+     * ============================================================ */
+
+    // Card Constants
+    const SUITS = [
+      { id: 'S', name: 'スペード', symbol: '♠', isRed: false },
+      { id: 'H', name: 'ハート', symbol: '♥', isRed: true },
+      { id: 'D', name: 'ダイヤ', symbol: '♦', isRed: true },
+      { id: 'C', name: 'クラブ', symbol: '♣', isRed: false }
+    ];
+
+    const SUIT_MAP = {
+      'S': SUITS[0],
+      'H': SUITS[1],
+      'D': SUITS[2],
+      'C': SUITS[3]
+    };
+
+    const RANK_NAMES = {
+      2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
+      8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K', 14: 'A'
+    };
+
+    // Suit SVG Definitions for Crisp Rendering
+    const SUIT_SVGS = {
+      'S': `<svg class="suit-black" viewBox="0 0 24 24"><path d="M12 2.5 C10 6 5 10 5 14 C5 17.3 7.7 20 11 20 C11.3 20 11.7 19.9 12 19.7 C12.3 19.9 12.7 20 13 20 C16.3 20 19 17.3 19 14 C19 10 14 6 12 2.5 Z M10.5 18 L9 21.5 L15 21.5 L13.5 18 Z"/></svg>`,
+      'H': `<svg class="suit-red" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+      'D': `<svg class="suit-red" viewBox="0 0 24 24"><path d="M12 2L4.5 12L12 22L19.5 12L12 2z"/></svg>`,
+      'C': `<svg class="suit-black" viewBox="0 0 24 24"><path d="M12 2C10.07 2 8.5 3.57 8.5 5.5C8.5 6.64 9.05 7.65 9.9 8.27C8.16 8.65 6.85 10.15 6.85 12C6.85 14.21 8.64 16 10.85 16C11.25 16 11.64 15.94 12 15.82C12.36 15.94 12.75 16 13.15 16C15.36 16 17.15 14.21 17.15 12C17.15 10.15 15.84 8.65 14.1 8.27C14.95 7.65 15.5 6.64 15.5 5.5C15.5 3.57 13.93 2 12 2ZM10.5 16L9 22H15L13.5 16H10.5Z"/></svg>`
+    };
+
+    // 9/6 Jacks or Better Paytable
+    const PAYTABLE_DEF = [
+      { id: 'ROYAL_FLUSH', name: 'ロイヤルフラッシュ', rates: [250, 500, 750, 1000, 4000] },
+      { id: 'STRAIGHT_FLUSH', name: 'ストレートフラッシュ', rates: [50, 100, 150, 200, 250] },
+      { id: 'FOUR_OF_A_KIND', name: 'フォーカード', rates: [25, 50, 75, 100, 125] },
+      { id: 'FULL_HOUSE', name: 'フルハウス', rates: [9, 18, 27, 36, 45] },
+      { id: 'FLUSH', name: 'フラッシュ', rates: [6, 12, 18, 24, 30] },
+      { id: 'STRAIGHT', name: 'ストレート', rates: [4, 8, 12, 16, 20] },
+      { id: 'THREE_OF_A_KIND', name: 'スリーカード', rates: [3, 6, 9, 12, 15] },
+      { id: 'TWO_PAIR', name: 'ツーペア', rates: [2, 4, 6, 8, 10] },
+      { id: 'JACKS_OR_BETTER', name: 'ジャックス・オア・ベター', rates: [1, 2, 3, 4, 5] }
+    ];
+
+    // Sound Synthesizer (Web Audio API)
+    class SoundManager {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      initCtx() {
+        if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, duration, type = 'sine', gainVal = 0.1) {
+        if (!this.enabled) return;
+        try {
+          this.initCtx();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          // Ignore audio errors silently
+        }
+      }
+
+      playCardHold() {
+        this.playTone(440, 0.08, 'triangle', 0.12);
+      }
+
+      playDeal() {
+        this.playTone(320, 0.06, 'sine', 0.1);
+        setTimeout(() => this.playTone(480, 0.08, 'sine', 0.1), 60);
+      }
+
+      playWin() {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 0.2, 'triangle', 0.15), idx * 90);
+        });
+      }
+
+      playLoss() {
+        this.playTone(220, 0.2, 'sawtooth', 0.06);
+      }
+    }
+
+    // Card Deck Creation & Shuffling
+    function createDeck() {
+      const deck = [];
+      const suits = ['S', 'H', 'D', 'C'];
+      for (let s = 0; s < suits.length; s++) {
+        for (let r = 2; r <= 14; r++) {
+          deck.push({ suit: suits[s], rank: r });
+        }
+      }
+      return deck;
+    }
+
+    function shuffleDeck(deck) {
+      const shuffled = [...deck];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = shuffled[i];
+        shuffled[i] = shuffled[j];
+        shuffled[j] = temp;
+      }
+      return shuffled;
+    }
+
+    // Five-Card Hand Evaluation
+    function evaluateHand(cards) {
+      const rankCounts = {};
+      const suitCounts = {};
+      const ranks = cards.map(c => c.rank).sort((a, b) => a - b);
+
+      for (let i = 0; i < cards.length; i++) {
+        const c = cards[i];
+        rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1;
+        suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1;
+      }
+
+      const isFlush = Object.keys(suitCounts).length === 1;
+      const uniqueRanks = [...new Set(ranks)];
+      let isStraight = false;
+      let isBroadway = false;
+
+      if (uniqueRanks.length === 5) {
+        if (ranks[4] - ranks[0] === 4) {
+          isStraight = true;
+          if (ranks[0] === 10 && ranks[4] === 14) {
+            isBroadway = true;
+          }
+        } else if (ranks[0] === 2 && ranks[1] === 3 && ranks[2] === 4 && ranks[3] === 5 && ranks[4] === 14) {
+          // Ace-low straight (Wheel: A-2-3-4-5)
+          isStraight = true;
+        }
+      }
+
+      if (isFlush && isStraight && isBroadway) {
+        return PAYTABLE_DEF.find(p => p.id === 'ROYAL_FLUSH');
+      }
+      if (isFlush && isStraight) {
+        return PAYTABLE_DEF.find(p => p.id === 'STRAIGHT_FLUSH');
+      }
+
+      const counts = Object.values(rankCounts).sort((a, b) => b - a);
+
+      if (counts[0] === 4) {
+        return PAYTABLE_DEF.find(p => p.id === 'FOUR_OF_A_KIND');
+      }
+      if (counts[0] === 3 && counts[1] === 2) {
+        return PAYTABLE_DEF.find(p => p.id === 'FULL_HOUSE');
+      }
+      if (isFlush) {
+        return PAYTABLE_DEF.find(p => p.id === 'FLUSH');
+      }
+      if (isStraight) {
+        return PAYTABLE_DEF.find(p => p.id === 'STRAIGHT');
+      }
+      if (counts[0] === 3) {
+        return PAYTABLE_DEF.find(p => p.id === 'THREE_OF_A_KIND');
+      }
+      if (counts[0] === 2 && counts[1] === 2) {
+        return PAYTABLE_DEF.find(p => p.id === 'TWO_PAIR');
+      }
+      if (counts[0] === 2) {
+        for (const [rankStr, cnt] of Object.entries(rankCounts)) {
+          if (cnt === 2 && Number(rankStr) >= 11) {
+            return PAYTABLE_DEF.find(p => p.id === 'JACKS_OR_BETTER');
+          }
+        }
+      }
+
+      return null; // No winning hand
+    }
+
+    /* ============================================================
+     * Video Poker Game Controller
+     * ============================================================ */
+    class PokerGameApp {
+      constructor() {
+        this.sound = new SoundManager();
+        this.credits = 100;
+        this.wager = 1;
+        this.lastWin = 0;
+        this.phase = 'BETTING'; // 'BETTING', 'HELD_SELECTION', 'ROUND_OVER', 'GAME_OVER'
+        this.deck = [];
+        this.hand = [];
+        this.holds = [false, false, false, false, false];
+        this.winningHand = null;
+        this.gameOverTimer = null;
+        this.lastFocusedElement = null;
+
+        this.initDOM();
+        this.initPaytable();
+        this.attachEventListeners();
+        this.updateView();
+        this.announce('ビデオポーカーへようこそ。クレジット: 100。ベット額を決めて「配る」を押してください。');
+      }
+
+      initDOM() {
+        this.dom = {
+          liveRegion: document.getElementById('status-live'),
+          statusDisplay: document.getElementById('status-display'),
+          meterCredits: document.getElementById('meter-credits'),
+          meterWager: document.getElementById('meter-wager'),
+          meterWin: document.getElementById('meter-win'),
+          btnPrimary: document.getElementById('btn-primary'),
+          btnBetMax: document.getElementById('btn-bet-max'),
+          btnResetGame: document.getElementById('btn-reset-game'),
+          btnSoundToggle: document.getElementById('btn-sound-toggle'),
+          betButtons: Array.from(document.querySelectorAll('.btn-bet-num')),
+          cardButtons: [0, 1, 2, 3, 4].map(i => document.getElementById(`card-btn-${i}`)),
+          heldBadges: [0, 1, 2, 3, 4].map(i => document.getElementById(`badge-${i}`)),
+          modal: document.getElementById('game-modal'),
+          modalTitle: document.getElementById('modal-title'),
+          modalDesc: document.getElementById('modal-desc'),
+          modalConfirm: document.getElementById('modal-btn-confirm'),
+          modalCancel: document.getElementById('modal-btn-cancel'),
+          paytableBody: document.getElementById('paytable-body')
+        };
+      }
+
+      clearGameOverTimeout() {
+        if (this.gameOverTimer) {
+          clearTimeout(this.gameOverTimer);
+          this.gameOverTimer = null;
+        }
+      }
+
+      initPaytable() {
+        let html = '';
+        PAYTABLE_DEF.forEach(hand => {
+          html += `<tr id="row-${hand.id}">`;
+          html += `<td>${hand.name}</td>`;
+          for (let b = 1; b <= 5; b++) {
+            html += `<td id="cell-${hand.id}-${b}">${hand.rates[b - 1]}</td>`;
+          }
+          html += `</tr>`;
+        });
+        this.dom.paytableBody.innerHTML = html;
+      }
+
+      announce(msg) {
+        if (this.dom.liveRegion) {
+          this.dom.liveRegion.textContent = msg;
+        }
+      }
+
+      attachEventListeners() {
+        // Deal / Draw action button
+        this.dom.btnPrimary.addEventListener('click', () => {
+          this.sound.initCtx();
+          if (this.phase === 'BETTING' || this.phase === 'ROUND_OVER') {
+            this.handleDeal();
+          } else if (this.phase === 'HELD_SELECTION') {
+            this.handleDraw();
+          } else if (this.phase === 'GAME_OVER') {
+            this.resetGame(100);
+          }
+        });
+
+        // Bet Max button
+        this.dom.btnBetMax.addEventListener('click', () => {
+          this.sound.initCtx();
+          if (this.phase === 'BETTING' || this.phase === 'ROUND_OVER') {
+            const maxWager = Math.min(5, this.credits);
+            if (maxWager >= 1) {
+              this.setWager(maxWager);
+              // In video poker, Bet Max commonly deals immediately
+              this.handleDeal();
+            }
+          }
+        });
+
+        // Bet number buttons 1..5
+        this.dom.betButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            this.sound.initCtx();
+            const val = parseInt(btn.dataset.bet, 10);
+            this.setWager(val);
+          });
+        });
+
+        // Card hold toggle buttons
+        this.dom.cardButtons.forEach((btn, idx) => {
+          btn.addEventListener('click', () => {
+            this.sound.initCtx();
+            this.toggleHold(idx);
+          });
+        });
+
+        // Reset / New Game button
+        this.dom.btnResetGame.addEventListener('click', () => {
+          this.sound.initCtx();
+          this.showResetConfirmation();
+        });
+
+        // Modal cancel button
+        if (this.dom.modalCancel) {
+          this.dom.modalCancel.addEventListener('click', () => {
+            this.closeModal();
+          });
+        }
+
+        // Modal confirm button
+        this.dom.modalConfirm.addEventListener('click', () => {
+          this.closeModal();
+          this.resetGame(100);
+        });
+
+        // Sound toggle
+        this.dom.btnSoundToggle.addEventListener('click', () => {
+          this.sound.enabled = !this.sound.enabled;
+          this.dom.btnSoundToggle.textContent = this.sound.enabled ? '🔊 音声: オン' : '🔇 音声: オフ';
+          this.dom.btnSoundToggle.setAttribute('aria-label', this.sound.enabled ? '音声オン' : '音声オフ');
+        });
+
+        // Global Keyboard Navigation
+        window.addEventListener('keydown', (e) => {
+          // If modal is active
+          if (this.dom.modal.classList.contains('active')) {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              this.closeModal();
+              return;
+            }
+            // If focused on modal buttons, native click handles Enter / Space once
+            if (document.activeElement === this.dom.modalConfirm || document.activeElement === this.dom.modalCancel) {
+              return;
+            }
+            // If focus is elsewhere inside modal, Enter confirms once
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              this.dom.modalConfirm.click();
+              return;
+            }
+            return;
+          }
+
+          // Card hold shortcuts: keys 1 to 5
+          if (['1', '2', '3', '4', '5'].includes(e.key)) {
+            const idx = parseInt(e.key, 10) - 1;
+            if (this.phase === 'HELD_SELECTION') {
+              e.preventDefault();
+              this.toggleHold(idx);
+            }
+            return;
+          }
+
+          // Space or Enter for Primary Action (when not focused on a specific button)
+          if (e.key === ' ' || e.key === 'Enter') {
+            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+            const isCard = document.activeElement && document.activeElement.classList.contains('card-btn');
+            const isButton = activeTag === 'button';
+
+            // If a card is focused, Space/Enter default behavior clicks the card button (toggling hold)
+            if (isCard) {
+              return;
+            }
+
+            // If any non-card button is focused, allow standard button click
+            if (isButton && document.activeElement !== this.dom.btnPrimary) {
+              return;
+            }
+
+            e.preventDefault();
+            this.dom.btnPrimary.click();
+            return;
+          }
+
+          // 'B' key changes Bet cyclically
+          if (e.key === 'b' || e.key === 'B') {
+            if (this.phase === 'BETTING' || this.phase === 'ROUND_OVER') {
+              e.preventDefault();
+              const nextBet = this.wager >= Math.min(5, this.credits) ? 1 : this.wager + 1;
+              this.setWager(nextBet);
+            }
+            return;
+          }
+
+          // 'M' key for Max Bet
+          if (e.key === 'm' || e.key === 'M') {
+            if (this.phase === 'BETTING' || this.phase === 'ROUND_OVER') {
+              e.preventDefault();
+              this.dom.btnBetMax.click();
+            }
+            return;
+          }
+
+          // 'R' or 'N' for Reset
+          if (e.key === 'r' || e.key === 'R' || e.key === 'n' || e.key === 'N') {
+            e.preventDefault();
+            this.showResetConfirmation();
+          }
+        });
+      }
+
+      setWager(amount) {
+        if (this.phase !== 'BETTING' && this.phase !== 'ROUND_OVER') return;
+        if (amount < 1 || amount > 5) return;
+        if (amount > this.credits) return;
+
+        this.wager = amount;
+        this.updateView();
+        this.announce(`ベット額を ${this.wager} に設定しました。`);
+      }
+
+      handleDeal() {
+        this.clearGameOverTimeout();
+        if (this.credits < 1) {
+          this.triggerGameOver();
+          return;
+        }
+
+        // Adjust wager if credits is lower than current wager
+        if (this.wager > this.credits) {
+          this.wager = Math.max(1, this.credits);
+        }
+
+        // Deduct wager
+        this.credits -= this.wager;
+        this.lastWin = 0;
+        this.winningHand = null;
+
+        // Shuffle and deal 5 cards
+        this.deck = shuffleDeck(createDeck());
+        this.hand = [this.deck.pop(), this.deck.pop(), this.deck.pop(), this.deck.pop(), this.deck.pop()];
+        this.holds = [false, false, false, false, false];
+
+        this.phase = 'HELD_SELECTION';
+        this.sound.playDeal();
+        this.updateView();
+
+        const cardNames = this.hand.map((c, i) => `${i + 1}枚目: ${SUIT_MAP[c.suit].name}の${RANK_NAMES[c.rank]}`).join('、');
+        this.announce(`カードが配られました。${cardNames}。キープするカードを選んで「引く」を押してください。`);
+      }
+
+      toggleHold(idx) {
+        if (this.phase !== 'HELD_SELECTION') return;
+        if (idx < 0 || idx >= 5) return;
+        if (!this.hand || !this.hand[idx]) return;
+
+        this.holds[idx] = !this.holds[idx];
+        this.sound.playCardHold();
+        this.updateView();
+
+        const card = this.hand[idx];
+        const cardDesc = `${idx + 1}枚目のカード (${SUIT_MAP[card.suit].name}の${RANK_NAMES[card.rank]})`;
+        if (this.holds[idx]) {
+          this.announce(`${cardDesc}をキープしました。`);
+        } else {
+          this.announce(`${cardDesc}のキープを解除しました。`);
+        }
+      }
+
+      handleDraw() {
+        if (this.phase !== 'HELD_SELECTION') return;
+
+        // Replace unheld cards
+        for (let i = 0; i < 5; i++) {
+          if (!this.holds[i]) {
+            this.hand[i] = this.deck.pop();
+          }
+        }
+
+        // Evaluate Hand
+        const result = evaluateHand(this.hand);
+        this.winningHand = result;
+
+        if (result) {
+          this.lastWin = result.rates[this.wager - 1];
+          this.credits += this.lastWin;
+          this.sound.playWin();
+          this.announce(`ドロー完了。役: ${result.name}！ +${this.lastWin}クレジット獲得！ 現在のクレジット: ${this.credits}。`);
+        } else {
+          this.lastWin = 0;
+          this.sound.playLoss();
+          this.announce(`ドロー完了。役なし。現在のクレジット: ${this.credits}。`);
+        }
+
+        // Check if out of credits
+        if (this.credits <= 0) {
+          this.triggerGameOver();
+        } else {
+          this.phase = 'ROUND_OVER';
+          if (this.wager > this.credits) {
+            this.wager = this.credits;
+          }
+          this.updateView();
+        }
+      }
+
+      triggerGameOver() {
+        if (this.credits > 0 || this.phase === 'BETTING') {
+          return;
+        }
+        this.clearGameOverTimeout();
+        this.phase = 'GAME_OVER';
+        this.lastFocusedElement = this.dom.btnPrimary;
+        this.dom.modalTitle.textContent = 'ゲームオーバー';
+        this.dom.modalDesc.textContent = 'クレジットがなくなりました。100クレジットで最初からやり直しますか？';
+        this.dom.modalConfirm.textContent = 'ニューゲーム (100クレジット)';
+        if (this.dom.modalCancel) {
+          this.dom.modalCancel.classList.add('hidden');
+          if (this.dom.modalCancel.style) {
+            this.dom.modalCancel.style.display = 'none';
+          }
+        }
+        this.updateView();
+        this.openModal(this.dom.modalConfirm);
+        this.announce('クレジットがなくなりました。ゲームオーバー。ニューゲームボタンで100クレジットから再開できます。');
+      }
+
+      showResetConfirmation() {
+        this.lastFocusedElement = document.activeElement;
+        this.dom.modalTitle.textContent = 'ゲームリセット';
+        this.dom.modalDesc.textContent = '現在のゲームをリセットして、100クレジットで新しくゲームを開始しますか？';
+        this.dom.modalConfirm.textContent = 'リセットして開始';
+        if (this.dom.modalCancel) {
+          this.dom.modalCancel.classList.remove('hidden');
+          if (this.dom.modalCancel.style) {
+            this.dom.modalCancel.style.display = '';
+          }
+        }
+        this.openModal(this.dom.modalConfirm);
+      }
+
+      openModal(elementToFocus) {
+        if (!this.lastFocusedElement) {
+          this.lastFocusedElement = document.activeElement;
+        }
+        this.dom.modal.classList.add('active');
+        const toFocus = elementToFocus || this.dom.modalConfirm;
+        if (toFocus && typeof toFocus.focus === 'function') {
+          toFocus.focus();
+        }
+      }
+
+      closeModal() {
+        this.dom.modal.classList.remove('active');
+        if (this.lastFocusedElement && typeof this.lastFocusedElement.focus === 'function') {
+          try {
+            this.lastFocusedElement.focus();
+          } catch (e) {}
+        } else if (this.dom.btnPrimary && typeof this.dom.btnPrimary.focus === 'function') {
+          try {
+            this.dom.btnPrimary.focus();
+          } catch (e) {}
+        }
+        this.lastFocusedElement = null;
+      }
+
+      resetGame(initialCredits = 100) {
+        this.clearGameOverTimeout();
+        this.closeModal();
+        this.credits = initialCredits;
+        this.wager = 1;
+        this.lastWin = 0;
+        this.winningHand = null;
+        this.hand = [];
+        this.holds = [false, false, false, false, false];
+        this.phase = 'BETTING';
+        this.updateView();
+        this.announce(`ゲームをリセットしました。クレジット: ${this.credits}。ベット額を選んで「配る」を押してください。`);
+      }
+
+      renderCardFace(card, idx) {
+        const suitInfo = SUIT_MAP[card.suit];
+        const rankStr = RANK_NAMES[card.rank];
+        const suitClass = suitInfo.isRed ? 'suit-red' : 'suit-black';
+        const suitSvg = SUIT_SVGS[card.suit];
+
+        return `
+          <div class="card-corner top">
+            <span class="card-rank ${suitClass}">${rankStr}</span>
+            <div class="card-suit-mini">${suitSvg}</div>
+          </div>
+          <div class="card-suit-center">
+            ${suitSvg}
+          </div>
+          <div class="card-corner bottom">
+            <span class="card-rank ${suitClass}">${rankStr}</span>
+            <div class="card-suit-mini">${suitSvg}</div>
+          </div>
+        `;
+      }
+
+      updateView() {
+        // 1. Update Meters
+        this.dom.meterCredits.textContent = this.credits;
+        this.dom.meterWager.textContent = this.wager;
+        this.dom.meterWin.textContent = this.lastWin;
+
+        // 2. Update Paytable Column Highlights
+        for (let b = 1; b <= 5; b++) {
+          const th = document.getElementById(`th-bet-${b}`);
+          const col = document.getElementById(`col-bet-${b}`);
+          const isActive = (b === this.wager);
+
+          if (th) {
+            th.classList.toggle('col-active', isActive);
+          }
+          if (col) {
+            col.classList.toggle('col-active', isActive);
+          }
+
+          PAYTABLE_DEF.forEach(h => {
+            const cell = document.getElementById(`cell-${h.id}-${b}`);
+            if (cell) {
+              cell.classList.toggle('col-active', isActive);
+            }
+          });
+        }
+
+        // Highlight Winning Row
+        PAYTABLE_DEF.forEach(h => {
+          const row = document.getElementById(`row-${h.id}`);
+          if (row) {
+            const isWinning = (this.winningHand && this.winningHand.id === h.id);
+            row.classList.toggle('winning-row', isWinning);
+          }
+        });
+
+        // 3. Update Status Message Banner
+        this.dom.statusDisplay.classList.remove('win', 'gameover');
+        if (this.phase === 'BETTING') {
+          this.dom.statusDisplay.textContent = 'ベット額を選んで「配る」を押してください';
+        } else if (this.phase === 'HELD_SELECTION') {
+          this.dom.statusDisplay.textContent = 'キープするカードを選択し、「引く」を押してください（キー: 1〜5）';
+        } else if (this.phase === 'ROUND_OVER') {
+          if (this.winningHand) {
+            this.dom.statusDisplay.textContent = `★ ${this.winningHand.name}！ +${this.lastWin}クレジット獲得！ ★`;
+            this.dom.statusDisplay.classList.add('win');
+          } else {
+            this.dom.statusDisplay.textContent = '役なし。次のゲームへ（配るを押してください）';
+          }
+        } else if (this.phase === 'GAME_OVER') {
+          this.dom.statusDisplay.textContent = 'クレジットがなくなりました。ニューゲームを押してください。';
+          this.dom.statusDisplay.classList.add('gameover');
+        }
+
+        // 4. Update Cards
+        const isHeldPhase = (this.phase === 'HELD_SELECTION');
+        const hasCards = (this.hand.length === 5);
+
+        for (let i = 0; i < 5; i++) {
+          const btn = this.dom.cardButtons[i];
+          const badge = this.dom.heldBadges[i];
+          const isHeld = this.holds[i];
+
+          // Held badge visibility
+          badge.classList.toggle('visible', isHeld && (isHeldPhase || this.phase === 'ROUND_OVER'));
+
+          if (hasCards) {
+            const card = this.hand[i];
+            btn.classList.remove('card-back');
+            btn.innerHTML = this.renderCardFace(card, i);
+            btn.classList.toggle('held', isHeld && isHeldPhase);
+            btn.disabled = !isHeldPhase;
+            btn.setAttribute('aria-pressed', isHeld ? 'true' : 'false');
+            btn.setAttribute('aria-label', `${i + 1}枚目のカード: ${SUIT_MAP[card.suit].name}の${RANK_NAMES[card.rank]}${isHeld ? ' (キープ中)' : ''}`);
+          } else {
+            btn.classList.add('card-back');
+            btn.classList.remove('held');
+            btn.innerHTML = '<div class="card-back-pattern"></div>';
+            btn.disabled = true;
+            btn.setAttribute('aria-pressed', 'false');
+            btn.setAttribute('aria-label', `${i + 1}枚目のカード: 裏面`);
+          }
+        }
+
+        // 5. Update Bet Selectors
+        const canBet = (this.phase === 'BETTING' || this.phase === 'ROUND_OVER');
+        this.dom.betButtons.forEach(btn => {
+          const bVal = parseInt(btn.dataset.bet, 10);
+          btn.classList.toggle('active', bVal === this.wager);
+          btn.disabled = !canBet || (bVal > this.credits);
+        });
+
+        this.dom.btnBetMax.disabled = !canBet || (this.credits < 1);
+
+        // 6. Update Primary Action Button
+        this.dom.btnPrimary.classList.remove('draw-mode', 'btn-restart-action');
+        if (this.phase === 'BETTING' || this.phase === 'ROUND_OVER') {
+          this.dom.btnPrimary.textContent = '配る (Deal)';
+          this.dom.btnPrimary.disabled = (this.credits < 1);
+          this.dom.btnPrimary.setAttribute('aria-label', 'カードを配る');
+        } else if (this.phase === 'HELD_SELECTION') {
+          this.dom.btnPrimary.textContent = '引く (Draw)';
+          this.dom.btnPrimary.classList.add('draw-mode');
+          this.dom.btnPrimary.disabled = false;
+          this.dom.btnPrimary.setAttribute('aria-label', 'カードを引く（交換）');
+        } else if (this.phase === 'GAME_OVER') {
+          this.dom.btnPrimary.textContent = 'ニューゲーム';
+          this.dom.btnPrimary.classList.add('btn-restart-action');
+          this.dom.btnPrimary.disabled = false;
+          this.dom.btnPrimary.setAttribute('aria-label', '100クレジットで最初からやり直す');
+        }
+      }
+    }
+
+    // Initialize Game on DOM ready
+    window.addEventListener('DOMContentLoaded', () => {
+      window.pokerApp = new PokerGameApp();
+    });
+  </script>
+</body>
+</html>
